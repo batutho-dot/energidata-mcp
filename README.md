@@ -1,12 +1,12 @@
 # energidata-mcp
 
-An MCP server that lets an AI assistant look up Danish electricity data from Energinet's open Energi Data Service: CO2 intensity, day-ahead spot price, cleanest or cheapest hours, for price area DK1 or DK2.
+An MCP server that lets an AI assistant look up Danish electricity data from Energinet's open Energi Data Service: CO2 intensity, day-ahead spot price, and the cleanest or cheapest hours, for price area DK1 or DK2.
 
-**Result:** Score: 10 out of 10 (Claude Sonnet 5.5 through Claude Code 2.1.314, 2026-11-19), after one fix to the server. Before the fix it was 9 out of 10; the miss was the server's arithmetic, not the model.
+**Result:** 10 out of 10 (Claude Sonnet 5.5 through Claude Code 2.1.314, 2026-11-19), after one fix to the server. Before the fix it was 9 out of 10. The miss was my server's arithmetic, not the model.
 
 ## Run it
 
-Needs Python 3.11 or newer and [uv](https://docs.astral.sh/uv/). From a clone of this repository:
+Python 3.11 or newer and [uv](https://docs.astral.sh/uv/). From a clone:
 
 ```bash
 uvx --from . energidata-mcp
@@ -18,9 +18,7 @@ Claude Code:
 claude mcp add energidata -- uvx --from /absolute/path/to/energidata-mcp energidata-mcp
 ```
 
-## How it works
-
-An MCP server is a small program that an AI app starts in the background and talks to over stdin and stdout. The model decides when to call a tool, the app runs the call, and the result goes back as text plus structured JSON.
+## Tools
 
 | Tool | Answers | Dataset |
 |---|---|---|
@@ -28,7 +26,7 @@ An MCP server is a small program that an AI app starts in the background and tal
 | `spot_price(area, start, end, currency)` | DKK or EUR per MWh per hour | `DayAheadPrices` |
 | `best_hours(area, metric, start, end, n_hours, consecutive, highest)` | the n cleanest or cheapest hours, or the best block of n back-to-back hours | as above |
 
-Architecture: [docs/architecture.md](docs/architecture.md).
+Structure: [docs/architecture.md](docs/architecture.md).
 
 ## Results
 
@@ -45,15 +43,14 @@ Architecture: [docs/architecture.md](docs/architecture.md).
 | 9 | 4 cheapest hours DK1, 18 Nov, 06 to 22 | 06:00, 11:00, 12:00, 13:00 | right |
 | 10 | Day mean DK2, 17 Nov, EUR | 225.69 EUR/MWh | **wrong** (225.68); run 2 right (225.69) |
 
-Test set and failures: [docs/details.md](docs/details.md).
+Test set and failures: [docs/details.md](docs/details.md). Pip install: `pip install .`, then `energidata-mcp`.
 
 ## Limits
 
-- **Rate limit.** Very few uncached calls; the next got HTTP 429 (about 60 seconds when measured).
+- **Rate limit.** After very few uncached calls the next got HTTP 429 (about 60 seconds).
 - **Hourly values are averages** of the 15-minute price rows and 5-minute CO2 rows.
-- **Prices start 2025-10-01.** Older prices (`Elspotprices`) are not read.
-- **CO2 data is initial data.** The forecast path (`CO2EmisProg`) is not covered by the test set.
-- **Spot price only.** No taxes, tariffs or grid fees.
+- **Prices start 2025-10-01.** No taxes, tariffs or grid fees.
+- **CO2 data is initial data.** The forecast path (`CO2EmisProg`) is not in the test set.
 
 ## Data and licence
 
@@ -66,8 +63,8 @@ Published under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) per th
 Source: Energinet (www.energidataservice.dk). Changes made here: sub-hourly values are
 averaged into hours. Energinet does not endorse this project.
 
-The raw rows for the two
-test days (17 and 18 November 2026, DK1 and DK2) are stored unchanged in `eval/data/` so the
-tests run offline; the computed answers are in `eval/expected.json`.
+The raw rows for the two test days (17 and 18 November 2026, DK1 and DK2) are stored
+unchanged in `eval/data/`, so the tests run offline. The computed answers are in
+`eval/expected.json`.
 
 Code: MIT, see `LICENSE`.

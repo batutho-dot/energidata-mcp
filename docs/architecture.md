@@ -1,22 +1,19 @@
 # Architecture
 
-How `energidata-mcp` is put together, drawn from the code as it is. Line numbers point at
-the main function or class of each box. Both diagrams render on GitHub.
+Line numbers point at the main function or class of each box.
 
-## (a) Structure: who calls whom
+## (a) Structure
 
-Boxes are the files of the server plus the two things outside it: the MCP client (Claude)
-and Energinet's API. Under each name are a few keywords for what the box does. An arrow
-reads "uses". The dashed arrow is a test-only swap.
+Arrows read "uses". The dashed arrow is a test-only swap.
 
 ```mermaid
 flowchart LR
-    client["Claude (MCP client)<br/>asks a question, picks a tool, reads the JSON"]
-    sdk["MCP Python SDK<br/>MCPServer, stdio, tool schemas, ToolError"]
+    client["Claude (MCP client)<br/>picks a tool, reads the JSON"]
+    sdk["MCP Python SDK<br/>MCPServer, stdio, ToolError"]
     server["server.py<br/>3 tools, input checks, shape the answer"]
     core["core.py<br/>time window, hourly means, pick best hours"]
-    api["api.py<br/>HTTP GET, timeouts, 5 min cache, retry on 429, 5xx and timeouts"]
-    ext["Energi Data Service API<br/>Energinet, CO2Emis, CO2EmisProg, DayAheadPrices"]
+    api["api.py<br/>HTTP GET, timeouts, 5 min cache, retries"]
+    ext["Energi Data Service API<br/>CO2Emis, CO2EmisProg, DayAheadPrices"]
     tests["tests/test_server.py<br/>pytest, in-memory client, offline, 10 questions"]
 
     client -->|"stdio: tool call"| sdk
@@ -33,21 +30,17 @@ flowchart LR
 
 | Box | File | Main function or class | What it does |
 |---|---|---|---|
-| Claude (MCP client) | outside this repository | n/a | The AI app that starts the server, reads its tool list and decides which tool to call. |
-| MCP Python SDK | `src/energidata_mcp/server.py:17` | `mcp = MCPServer("energidata", ...)` | The official library that speaks the protocol over stdin and stdout and turns Python errors of type `ToolError` into tool errors the model can read. |
-| server.py | `src/energidata_mcp/server.py:63` | `co2_intensity` (also `spot_price` at :81, `best_hours` at :98, `main` at :135) | Defines the three tools, turns bad input into `ToolError`, and builds the JSON answer from the hours that `core.py` returns. |
-| core.py | `src/energidata_mcp/core.py:40` | `hourly` (also `parse_window` at :12, `pick_hours` at :80) | Pure functions with no network: check the time window, average 5-minute or 15-minute rows into hours, pick the lowest or highest hours. |
-| api.py | `src/energidata_mcp/api.py:88` | `fetch_records` (retry loop `_get` at :60) | Fetches the rows for one dataset, window and price area, keeps them for 5 minutes, waits and retries once on HTTP 429, retries timeouts and HTTP 5xx twice, and turns any other failure into a readable error. |
-| Energi Data Service API | `src/energidata_mcp/api.py:26` | `BASE_URL` | Energinet's open data service that holds the CO2 and price rows; it is not part of this repository. |
-| tests/test_server.py | `tests/test_server.py:38` | `client` fixture (offline swap at :28) | Calls the tools through an in-memory MCP client, with the API call replaced by rows saved in `eval/data/`, and checks the 10 questions against `eval/expected.json`. |
+| Claude (MCP client) | outside this repository | n/a | Starts the server and decides which tool to call. |
+| MCP Python SDK | `src/energidata_mcp/server.py:17` | `mcp = MCPServer("energidata", ...)` | Speaks the protocol over stdin and stdout, turns `ToolError` into an error the model can read. |
+| server.py | `src/energidata_mcp/server.py:63` | `co2_intensity` (also `spot_price` at :81, `best_hours` at :98, `main` at :135) | The three tools. Bad input becomes `ToolError`. |
+| core.py | `src/energidata_mcp/core.py:40` | `hourly` (also `parse_window` at :12, `pick_hours` at :80) | Pure functions, no network: window check, hourly means, best hours. |
+| api.py | `src/energidata_mcp/api.py:88` | `fetch_records` (retry loop `_get` at :60) | Fetches rows, caches 5 minutes, retries once on HTTP 429 and twice on a timeout or HTTP 5xx. |
+| Energi Data Service API | `src/energidata_mcp/api.py:26` | `BASE_URL` | Energinet's open data service. |
+| tests/test_server.py | `tests/test_server.py:38` | `client` fixture (offline swap at :28) | In-memory MCP client on rows saved in `eval/data/`, checked against `eval/expected.json`. |
 
-Not drawn: `eval/` (the plain-script answer checker and the Claude Code agent run) and
-`verify.py` are scripts around the server, not part of the path a request takes.
+## (b) One request: `spot_price`
 
-## (b) One request: `spot_price` from question to answer
-
-The path of a single call, here "what was the spot price in DK1 on 17 November?". The other
-two tools differ only in which dataset they read and what they do with the hours.
+"What was the spot price in DK1 on 17 November?" The other two tools differ only in dataset and what they do with the hours.
 
 ```mermaid
 sequenceDiagram
@@ -62,7 +55,7 @@ sequenceDiagram
     S->>T: spot_price(area, start, end, currency)
     T->>K: parse_window(start, end)
     K-->>T: start and end as YYYY-MM-DDTHH:MM
-    Note over T,K: a bad date or an empty window raises ValueError, server.py turns it into ToolError
+    Note over T,K: bad date or empty window: ValueError, then ToolError
     Note over T: _price_hours refuses a start before 2025-10-01
     T->>A: fetch_records("DayAheadPrices", start, end, area)
     alt same request answered less than 300 seconds ago
@@ -71,11 +64,11 @@ sequenceDiagram
         A->>E: GET dataset DayAheadPrices with start, end, PriceArea filter, limit 0
         E-->>A: HTTP 200 with JSON records
         opt the first answer is HTTP 429
-            A->>A: sleep for the seconds Energinet names (at most 70)
+            A->>A: sleep as long as Energinet says (at most 70 s)
             A->>E: GET again, once
             E-->>A: HTTP 200 with JSON records
         end
-        Note over A: any other HTTP status raises ApiError, server.py turns it into ToolError
+        Note over A: any other HTTP status: ApiError, then ToolError
         A->>A: store the rows in the cache
         A-->>T: records
     end
@@ -89,9 +82,9 @@ sequenceDiagram
 
 | Step | File | Line | What happens |
 |---|---|---|---|
-| Tool entry | `src/energidata_mcp/server.py` | `spot_price` at :81 | Receives the arguments the model chose. |
+| Tool entry | `src/energidata_mcp/server.py` | `spot_price` at :81 | Receives the arguments. |
 | Window check | `src/energidata_mcp/core.py` | `parse_window` at :12 | Accepts a date or date and time, defaults `end` to the next midnight, rejects windows over 31 days. |
-| Price guard and fetch | `src/energidata_mcp/server.py` | `_price_hours` at :43 | Refuses starts before 2025-10-01, then calls the API client through `_fetch` at :50. |
-| HTTP call, cache, retry | `src/energidata_mcp/api.py` | `fetch_records` at :88 | Returns cached rows if fresh, otherwise one GET, with one wait and retry on HTTP 429 and up to two retries on a timeout or HTTP 5xx. |
-| Parsing | `src/energidata_mcp/core.py` | `hourly` at :40 | Groups rows by UTC hour and averages them, so daylight saving changes stay correct. |
-| Answer | `src/energidata_mcp/server.py` | `spot_price` at :81 | Adds the mean, the rounded hours and the credit line, and returns the dict. |
+| Price guard | `src/energidata_mcp/server.py` | `_price_hours` at :43 | Refuses starts before 2025-10-01, then fetches through `_fetch` at :50. |
+| HTTP, cache, retry | `src/energidata_mcp/api.py` | `fetch_records` at :88 | Fresh cached rows, otherwise one GET with the retries above. |
+| Parsing | `src/energidata_mcp/core.py` | `hourly` at :40 | Groups by UTC hour, so daylight saving stays correct. |
+| Answer | `src/energidata_mcp/server.py` | `spot_price` at :81 | Adds the mean, the rounded hours and the credit line. |
