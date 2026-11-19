@@ -59,6 +59,35 @@ All times in and out are Danish local time. A window is start (inclusive) to end
 leave `end` out to get the rest of the start day. Wrong input (a bad date, an empty window)
 comes back as a tool error the model can read and fix.
 
+## How it is built
+
+Claude talks to the server over stdio; the server asks Energinet's API for rows, averages
+them into hours and answers. Boxes are the files, with keywords for what each one does.
+The sequence of one request and a table linking each box to a file and line are in
+[docs/architecture.md](docs/architecture.md).
+
+```mermaid
+flowchart LR
+    client["Claude (MCP client)<br/>asks a question, picks a tool, reads the JSON"]
+    sdk["MCP Python SDK<br/>MCPServer, stdio, tool schemas, ToolError"]
+    server["server.py<br/>3 tools, input checks, shape the answer"]
+    core["core.py<br/>time window, hourly means, pick best hours"]
+    api["api.py<br/>HTTP GET, 5 min cache, retry on 429"]
+    ext["Energi Data Service API<br/>Energinet, CO2Emis, CO2EmisProg, DayAheadPrices"]
+    tests["tests/test_server.py<br/>pytest, in-memory client, offline, 10 questions"]
+
+    client -->|"stdio: tool call"| sdk
+    sdk -->|"runs the tool function"| server
+    server -->|"parse_window, hourly, mean, pick_hours"| core
+    server -->|"await fetch_records"| api
+    api -->|"HTTPS GET with PriceArea filter"| ext
+    tests -->|"in-memory Client"| sdk
+    tests -.->|"monkeypatch fetch_records"| api
+
+    classDef outside fill:#eee,stroke:#888,stroke-dasharray: 4 3
+    class client,ext outside
+```
+
 ## The test set
 
 `eval/questions.json` holds 10 questions on two fixed past days (17 and 18 November 2026),
