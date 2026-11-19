@@ -1,5 +1,7 @@
 # energidata-mcp
 
+[![tests](https://github.com/batutho-dot/energidata-mcp/actions/workflows/tests.yml/badge.svg)](https://github.com/batutho-dot/energidata-mcp/actions/workflows/tests.yml)
+
 An MCP server that lets an AI assistant (Claude Code, Claude Desktop, any MCP host) look up
 Danish electricity data from Energinet's open Energi Data Service: the CO2 intensity of the
 power you use, the day-ahead spot price, and the cleanest or cheapest hours in a time window,
@@ -17,7 +19,7 @@ not the model. Plain-script answers: 10 of 10 reproduced by the server tests.
 
 ## Run it (one command)
 
-Needs [uv](https://docs.astral.sh/uv/). From a clone of this repository:
+Needs Python 3.11 or newer and [uv](https://docs.astral.sh/uv/). From a clone of this repository:
 
 ```bash
 uvx --from . energidata-mcp
@@ -32,6 +34,41 @@ claude mcp add energidata -- uvx --from /absolute/path/to/energidata-mcp energid
 
 Or with pip: `pip install .` then the command `energidata-mcp`.
 
+## Example
+
+Asked "when is the cheapest 3-hour block in DK1 on 17 November 2026?", the model calls
+`best_hours(area="DK1", metric="price", start="2026-11-17", n_hours=3, consecutive=True)`
+and gets (shortened):
+
+```json
+{
+  "area": "DK1", "metric": "price", "unit": "DKK/MWh", "consecutive": true,
+  "picked": [
+    {"hour_dk": "2026-11-17T21:00", "value": 1361.03, "samples": 4},
+    {"hour_dk": "2026-11-17T22:00", "value": 1280.32, "samples": 4},
+    {"hour_dk": "2026-11-17T23:00", "value": 1125.38, "samples": 4}
+  ],
+  "mean_of_picked": 1255.58, "mean_of_window": 1563.5, "hours_in_window": 24
+}
+```
+
+It answers "21:00 to 00:00, mean 1255.58 DKK/MWh", which matches the plain-script answer
+(question 7 below).
+
+## Tests
+
+```bash
+pip install -e ".[dev]"
+pytest            # 48 tests, offline: the API is never called
+python verify.py  # compile, tests, answer script, and the installed server over stdio
+```
+
+The tests cover the 10 eval questions through an in-memory MCP client, the error paths a
+model can hit (bad date, empty or too-long window, unknown area, too many hours, API down),
+the time and averaging functions (including the daylight-saving hour that happens twice),
+and the HTTP client against a mock transport (rate limit, timeouts, HTTP 5xx, malformed
+answers). GitHub Actions runs them on every push on Linux (Python 3.11 and 3.13) and Windows.
+
 ## How it works
 
 An MCP server is a small program that an AI app starts in the background and talks to over
@@ -43,7 +80,7 @@ This one has three files:
 
 | File | Job |
 |---|---|
-| `src/energidata_mcp/api.py` | Fetches rows from the Energi Data Service API, caches them for 5 minutes, waits and retries once on a rate-limit answer (HTTP 429) |
+| `src/energidata_mcp/api.py` | Fetches rows from the Energi Data Service API with a 30 s timeout, caches them for 5 minutes, waits and retries once on a rate-limit answer (HTTP 429), retries twice on a timeout or HTTP 5xx |
 | `src/energidata_mcp/core.py` | Pure functions: checks the time window, averages 5-minute or 15-minute rows into hours, picks the lowest or highest hours |
 | `src/energidata_mcp/server.py` | The three tools, built with the official [MCP Python SDK](https://py.sdk.modelcontextprotocol.io/) (`MCPServer`, v2.3) |
 
@@ -72,7 +109,7 @@ flowchart LR
     sdk["MCP Python SDK<br/>MCPServer, stdio, tool schemas, ToolError"]
     server["server.py<br/>3 tools, input checks, shape the answer"]
     core["core.py<br/>time window, hourly means, pick best hours"]
-    api["api.py<br/>HTTP GET, 5 min cache, retry on 429"]
+    api["api.py<br/>HTTP GET, timeouts, 5 min cache, retry on 429, 5xx and timeouts"]
     ext["Energi Data Service API<br/>Energinet, CO2Emis, CO2EmisProg, DayAheadPrices"]
     tests["tests/test_server.py<br/>pytest, in-memory client, offline, 10 questions"]
 
@@ -97,8 +134,8 @@ where the server groups by the UTC hour), so it checks the server's arithmetic r
 repeating it.
 
 ```bash
-python eval/answers.py        # writes eval/expected.json, caches raw rows in eval/.cache/
-pytest                        # 11 tests: the 10 questions through an in-memory MCP client, plus a bad-date case
+python eval/answers.py        # writes eval/expected.json; downloads raw rows into eval/data/ if missing
+pytest                        # the 10 questions through an in-memory MCP client, plus error paths
 python eval/agent_run.py      # asks Claude Code each question, records answers and tool calls
 python eval/score.py          # scores eval/agent_results.json against eval/expected.json
 ```
@@ -185,7 +222,8 @@ Data: Energinet, [Energi Data Service](https://www.energidataservice.dk/), datas
 Published under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) per the
 [terms and conditions](https://www.energidataservice.dk/terms-and-conditions).
 Source: Energinet (www.energidataservice.dk). Changes made here: sub-hourly values are
-averaged into hours. Energinet does not endorse this project. No data is stored in this
-repository except the computed answers in `eval/expected.json`.
+averaged into hours. Energinet does not endorse this project. The raw rows for the two
+test days (17 and 18 November 2026, DK1 and DK2) are stored unchanged in `eval/data/` so the
+tests run offline; the computed answers are in `eval/expected.json`.
 
 Code: MIT, see `LICENSE`.

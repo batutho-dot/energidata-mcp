@@ -2,12 +2,14 @@
 
 Steps (cheapest first, stops at the first failure, writes nothing into the repository):
   1. compile   every .py file compiles
-  2. tests     pytest (the 10 eval questions through an in-memory MCP client); skips count as failure
-  3. answers   eval/answers.py recomputed in memory from eval/.cache/ matches eval/expected.json
+  2. tests     pytest (the 10 eval questions through an in-memory MCP client, error paths,
+               the HTTP client on a mock transport); skips count as failure
+  3. answers   eval/answers.py recomputed in memory from eval/data/ matches eval/expected.json
   4. stdio     the installed `energidata-mcp` command starts over stdio, lists exactly the 3 tools,
                and turns a bad date into a tool error (no network needed)
 
-Needs: the dev install (`pip install -e .[dev]`) and eval/.cache/ from one `python eval/answers.py`.
+Needs: the dev install (`pip install -e .[dev]`). The raw API rows for the test days are committed
+in eval/data/.
 No network in any step; a live API run is not part of verify (the API rate-limits hard).
 
     python verify.py
@@ -43,8 +45,8 @@ def step_compile() -> str:
 
 
 def step_tests() -> str:
-    if not (ROOT / "eval" / ".cache").exists():
-        raise Fail("eval/.cache/ missing; run python eval/answers.py once")
+    if not any((ROOT / "eval" / "data").glob("*.json")):
+        raise Fail("eval/data/ is empty; run python eval/answers.py once")
     env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
     proc = subprocess.run(
         [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "-rs"],

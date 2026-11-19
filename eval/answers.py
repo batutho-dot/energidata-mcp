@@ -4,7 +4,7 @@ Standard library only, and deliberately written separately from the server code
 (it groups by the Danish-time hour string instead of the UTC hour), so it is an
 independent check on the server's arithmetic.
 
-    python eval/answers.py          # downloads raw data once into eval/.cache/, writes eval/expected.json
+    python eval/answers.py          # downloads raw data once into eval/data/, writes eval/expected.json
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from collections import defaultdict
 from pathlib import Path
 
 HERE = Path(__file__).parent
-CACHE = HERE / ".cache"
+DATA = HERE / "data"
 WINDOW = ("2026-11-17T00:00", "2026-11-19T00:00")
 DATASETS = {
     "co2": ("CO2Emis", "Minutes5DK", "CO2Emission"),
@@ -30,7 +30,7 @@ DATASETS = {
 
 def raw(dataset: str, area: str) -> list[dict]:
     """Rows for one dataset and area over WINDOW, cached on disk so the API is hit once."""
-    path = CACHE / f"{dataset}_{area}_{WINDOW[0][:10]}_{WINDOW[1][:10]}.json"
+    path = DATA / f"{dataset}_{area}_{WINDOW[0][:10]}_{WINDOW[1][:10]}.json"
     if path.exists():
         return json.loads(path.read_text(encoding="utf-8"))
     query = urllib.parse.urlencode(
@@ -50,7 +50,7 @@ def raw(dataset: str, area: str) -> list[dict]:
             time.sleep(wait)
     else:
         raise RuntimeError(f"gave up on {dataset} {area}")
-    CACHE.mkdir(exist_ok=True)
+    DATA.mkdir(exist_ok=True)
     path.write_text(json.dumps(rows), encoding="utf-8")
     return rows
 
