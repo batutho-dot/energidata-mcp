@@ -24,6 +24,7 @@ import os
 import shutil
 import subprocess
 import sys
+import sysconfig
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -72,7 +73,7 @@ def step_answers() -> str:
 
 
 def step_stdio() -> str:
-    exe = shutil.which("energidata-mcp", path=str(Path(sys.executable).parent))
+    exe = shutil.which("energidata-mcp", path=sysconfig.get_path("scripts"))
     if not exe:
         raise Fail("energidata-mcp command not installed in this environment")
 
