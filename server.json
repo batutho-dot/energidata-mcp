@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.batutho-dot/energidata-mcp",
+  "description": "Danish electricity CO2 intensity, spot prices and cleanest hours from Energi Data Service",
+  "repository": {
+    "url": "https://github.com/batutho-dot/energidata-mcp",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "energidata-mcp",
+      "version": "0.1.0",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

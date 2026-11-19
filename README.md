@@ -1,22 +1,49 @@
 # energidata-mcp
 
+<!-- mcp-name: io.github.batutho-dot/energidata-mcp -->
+
 An MCP server that lets an AI assistant look up Danish electricity data from Energinet's open Energi Data Service: CO2 intensity, day-ahead spot price, and the cleanest or cheapest hours, for price area DK1 or DK2.
 
 **Result:** 10 out of 10 (Claude Sonnet 5.5 through Claude Code 2.1.314, 2026-11-19), after one fix to the server. Before the fix it was 9 out of 10. The miss was my server's arithmetic, not the model.
 
-## Run it
+## Install
 
-Python 3.11 or newer and [uv](https://docs.astral.sh/uv/). From a clone:
+One command, with [uv](https://docs.astral.sh/uv/) (no clone, no venv):
 
 ```bash
-uvx --from . energidata-mcp
+uvx energidata-mcp
 ```
+
+That works once the package is on PyPI. Until then, install straight from GitHub:
+
+```bash
+uvx --from git+https://github.com/batutho-dot/energidata-mcp energidata-mcp
+```
+
+Or with pip: `pip install energidata-mcp`, then run `energidata-mcp`. Either way the server starts on stdio
+and waits silently for an MCP host to talk to it.
 
 Claude Code:
 
 ```bash
-claude mcp add energidata -- uvx --from /absolute/path/to/energidata-mcp energidata-mcp
+claude mcp add energidata -- uvx energidata-mcp
 ```
+
+Claude Desktop: add this to `claude_desktop_config.json` (Settings, Developer, Edit Config) and
+restart the app:
+
+```json
+{
+  "mcpServers": {
+    "energidata": {
+      "command": "uvx",
+      "args": ["energidata-mcp"]
+    }
+  }
+}
+```
+
+Needs Python 3.11 or newer. From a clone, `uvx --from . energidata-mcp` runs your local copy.
 
 ## Tools
 
