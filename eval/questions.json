@@ -1,0 +1,22 @@
+[
+  {"id": 1, "question": "What was the CO2 intensity of electricity in DK1 between 08:00 and 09:00 Danish time on 17 November 2026, in g/kWh?",
+   "kind": "co2_hour", "area": "DK1", "day": "2026-11-17", "hour": "08:00"},
+  {"id": 2, "question": "Which hour on 17 November 2026 had the lowest CO2 intensity in DK2?",
+   "kind": "co2_min_hour", "area": "DK2", "day": "2026-11-17"},
+  {"id": 3, "question": "On 18 November 2026, which price area, DK1 or DK2, had the lower average CO2 intensity, and what were the two daily averages?",
+   "kind": "co2_compare_day", "day": "2026-11-18"},
+  {"id": 4, "question": "What was the day-ahead spot price in DK1 for the hour 18:00 to 19:00 on 17 November 2026, in DKK per MWh?",
+   "kind": "price_hour", "area": "DK1", "day": "2026-11-17", "hour": "18:00", "currency": "DKK"},
+  {"id": 5, "question": "Which was the cheapest hour on 18 November 2026 in DK2?",
+   "kind": "price_min_hour", "area": "DK2", "day": "2026-11-18"},
+  {"id": 6, "question": "Which was the most expensive hour on 18 November 2026 in DK1, and what was its price in DKK per MWh?",
+   "kind": "price_max_hour", "area": "DK1", "day": "2026-11-18", "currency": "DKK"},
+  {"id": 7, "question": "In DK1 on 17 November 2026, when did the cheapest block of 3 consecutive hours start, and what was its average price in DKK per MWh?",
+   "kind": "price_block", "area": "DK1", "day": "2026-11-17", "n": 3, "currency": "DKK"},
+  {"id": 8, "question": "In DK2 on 18 November 2026, when did the cleanest (lowest CO2) block of 3 consecutive hours start?",
+   "kind": "co2_block", "area": "DK2", "day": "2026-11-18", "n": 3},
+  {"id": 9, "question": "In DK1 on 18 November 2026, between 06:00 and 22:00, which 4 hours were cheapest (they do not need to be consecutive)?",
+   "kind": "price_n_cheapest", "area": "DK1", "day": "2026-11-18", "from": "06:00", "to": "22:00", "n": 4},
+  {"id": 10, "question": "What was the average day-ahead price in DK2 over the whole day of 17 November 2026, in EUR per MWh?",
+   "kind": "price_day_mean", "area": "DK2", "day": "2026-11-17", "currency": "EUR"}
+]

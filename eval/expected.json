@@ -1,0 +1,72 @@
+{
+  "window": [
+    "2026-11-17T00:00",
+    "2026-11-19T00:00"
+  ],
+  "rows": {
+    "CO2Emis_DK1": 576,
+    "CO2Emis_DK2": 576,
+    "DayAheadPrices_DK1": 192,
+    "DayAheadPrices_DK2": 192
+  },
+  "answers": {
+    "1": {
+      "value": 189.83,
+      "unit": "g/kWh"
+    },
+    "2": {
+      "hour": "01:00",
+      "value": 24.58,
+      "unit": "g/kWh"
+    },
+    "3": {
+      "lower": "DK1",
+      "DK1": 120.92,
+      "DK2": 121.48,
+      "unit": "g/kWh"
+    },
+    "4": {
+      "value": 1586.96,
+      "unit": "DKK/MWh"
+    },
+    "5": {
+      "hour": "04:00",
+      "value": 829.75,
+      "unit": "DKK/MWh"
+    },
+    "6": {
+      "hour": "18:00",
+      "value": 1574.96,
+      "unit": "DKK/MWh"
+    },
+    "7": {
+      "start_hour": "21:00",
+      "mean": 1255.58,
+      "unit": "DKK/MWh"
+    },
+    "8": {
+      "start_hour": "08:00",
+      "mean": 108.19,
+      "unit": "g/kWh"
+    },
+    "9": {
+      "hours": [
+        "06:00",
+        "11:00",
+        "12:00",
+        "13:00"
+      ],
+      "values": [
+        889.38,
+        1067.02,
+        1110.02,
+        1114.69
+      ],
+      "unit": "DKK/MWh"
+    },
+    "10": {
+      "value": 225.69,
+      "unit": "EUR/MWh"
+    }
+  }
+}
